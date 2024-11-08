@@ -17,15 +17,15 @@ run_id = f"run{str(int(time.time()))[-5:]}" # 5 digits of current time in millis
 root = os.getcwd()
 mdir = f"{root}/figures/{today}/{run_id}"
 os.makedirs(mdir, exist_ok=True)
-this_file = os.path.basename(__file__)
-shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py 
-script_dir = os.path.dirname(os.path.abspath(__file__))
-Fluid_source = os.path.join(script_dir, "Fluid.py")
-Fluid_destination = f"{mdir}/Fluid.py"
-shutil.copy(Fluid_source, Fluid_destination) # Fluid.py
-Visualize_source = os.path.join(script_dir, "Visualize.py")
-Visualize_destination = f"{mdir}/Visualize.py"
-shutil.copy(Visualize_source, Visualize_destination) # Visualize.py
+# this_file = os.path.basename(__file__)
+# shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py 
+# script_dir = os.path.dirname(os.path.abspath(__file__))
+# Fluid_source = os.path.join(script_dir, "Fluid.py")
+# Fluid_destination = f"{mdir}/Fluid.py"
+# shutil.copy(Fluid_source, Fluid_destination) # Fluid.py
+# Visualize_source = os.path.join(script_dir, "Visualize.py")
+# Visualize_destination = f"{mdir}/Visualize.py"
+# shutil.copy(Visualize_source, Visualize_destination) # Visualize.py
 
 
 # # Create folder to save figures and scripts. 
