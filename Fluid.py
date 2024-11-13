@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from Config import L, ny, tol, maxiter, H, tf, u_in, Re
+from Config import L, ny, tol, maxiter, H, tf, u_in, rho, Re
 
 class Fluid:
 
@@ -14,37 +14,41 @@ class Fluid:
         self.ny = ny # Ensure cells are square
         self.nx = self.L*ny
         self.dy = H/self.ny
-        self.dx = H*L/self.nx # They have to be equal. 
+        self.dx = H*L/self.nx # They have to be equal.
         if self.dx != self.dy:
             raise SystemExit("Error: Cells are not square. Simulation terminated.")
         # Physical properties
-        self.rho = .001 # Density. air_rho= .001
+        self.rho = rho
         self.Re = Re # Kinematic viscosity.
         self.u_in = u_in
         self.nu = (self.u_in * self.H) / self.Re
         self.tf = tf # final simulation time
         print (f'Running simulation with nu={self.nu}, Re={self.Re} and inlet vel={self.u_in}')
-        # Numerical 
+        # Numerical
         self.cfl = 0.1 # CFL number
         self.tol = tol  # Poisson solver tolerance threshold value.
         self.maxiter = maxiter # Max number of iterations on the Poisson solver.
-        # Turbine parameters 
-        self.D_cells = 6  # Cells span by the turbine's diamater.  
-        self.D = self.H/self.ny*self.D_cells  # Physical length of the diameter. 
-        self.A= 3.14*(self.D/2)*(self.D/2) # Swept area.
-        self.Ct= 3/4 # Thrust coefficient. 
-        self.F = -0.5 * self.rho * self.A * self.Ct * self.u_in * self.u_in / (self.D_cells)
-        # self.F = 60 
-        # Initialize arrays. 
-        self.u = np.ones((self.ny+2, self.nx+1))*self.u_in  # Set initial velocity to u_in everywhere.  
+
+        # Turbine parameters
+        ny_turb = 6
+        # D_turb = ny_turb * self.dy  # Cells span by the turbine's diamater.
+        # A = 3.14 * 0.25 * D_turb**2 # Swept area.
+        Ct = 0.75 # Thrust coefficient.
+
+        # Force per unit mass (N/kg) of Axial Induction
+        # Can go through derivation with Colin later...
+        self.F = -0.5 * Ct * self.u_in**2 / self.dx
+
+        # Initialize arrays.
+        self.u = np.ones((self.ny+2, self.nx+1))*self.u_in  # Set initial velocity to u_in everywhere.
         self.v = np.zeros((self.ny+1, self.nx+2))  # First, fill the entire array with zeros
-        self.p = np.zeros((self.ny+2, self.nx+2)) + 1e-20 # Pressure field. Zero initialization creates trouble. 
+        self.p = np.zeros((self.ny+2, self.nx+2)) + 1e-20 # Pressure field. Zero initialization creates trouble.
 
         # Add a turbine.
-        self.AI = np.zeros_like(self.u) # Init force array. 
-        mid_y, mid_x = self.ny // 2, self.nx // 2 # In the middle of the domain. 
-        # Assign force to corresponding cells. 
-        self.AI[(mid_y - self.D_cells//2):(mid_y + self.D_cells//2),mid_x] = self.F
+        self.AI = np.zeros_like(self.u) # Init force array.
+        mid_y, mid_x = self.ny // 2, self.nx // 2 # In the middle of the domain.
+        # Assign force to corresponding cells.
+        self.AI[(mid_y - ny_turb//2):(mid_y + ny_turb//2),mid_x] = self.F
 
     def interpolate(self, u, v):
         u_avg = (u[:-1, :-1] + u[1:, :-1] + u[1:, 1:] + u[:-1, 1:])/4
@@ -96,17 +100,17 @@ class Fluid:
 
     def set_BCs(self, u, v):
         # Top wall. ZeroGradient BCs (neumann)
-        v[-1, :] = v[-2, :] # dv/dy=0 at half cell from boundary. Backward difference..  
-        u[-1, :] = u[-2, :] # du/dy=0 at boundary. 
+        v[-1, :] = v[-2, :] # dv/dy=0 at half cell from boundary. Backward difference..
+        u[-1, :] = u[-2, :] # du/dy=0 at boundary.
         # Bottom wall. ZeroGradient BC (neumann)
         u[0, :] = u[1, :] # du/dy=0 at boundary.
-        v[0, :] = v[1, :] # dv/dy=0 at half cell from boundary. Forward difference.. 
-        # Inlet. 
-        u[:, 0] = u_in # To set u=u_in. 
+        v[0, :] = v[1, :] # dv/dy=0 at half cell from boundary. Forward difference..
+        # Inlet.
+        u[:, 0] = u_in # To set u=u_in.
         v[:, 0] = -v[:, 1] # v=0
         # Outlet. Zero Gradient
-        u[:, -1] = u[:, -2] # du/dx = 0 at half cell from boundary. Backward difference..  
-        v[:, -1] = v[:, -2] # dv/dx = 0 at outlet.  
+        u[:, -1] = u[:, -2] # du/dx = 0 at half cell from boundary. Backward difference..
+        v[:, -1] = v[:, -2] # dv/dx = 0 at outlet.
 
         return u, v
 
@@ -139,7 +143,7 @@ class Fluid:
         return u
 
     def correct_u(self, u, p, dt):
-        u[1:-1, 1:-1] -= self.dpdx(p,) * self.rho * dt
+        u[1:-1, 1:-1] -= self.dpdx(p) * dt / self.rho
         return u
 
     def advect_v_alt(self, v, u, dt):
@@ -155,7 +159,7 @@ class Fluid:
         return v
 
     def correct_v(self, v, p, dt):
-        v[1:-1, 1:-1] -= self.dpdy(p) * self.rho * dt
+        v[1:-1, 1:-1] -= self.dpdy(p) * dt / self.rho
         return v
 
     def unpslit_euler_b(self, u, v, u_avg, v_avg, dt):
@@ -184,9 +188,9 @@ class Fluid:
         """Solve the Poisson equation using Jabobi's method.
         """
         err = np.inf # Initialize huge error.
-        nit = 0 # Reset num iterations. 
-        pcoef = 0.5 / (self.dx**2 + self.dy**2) # Simplifies code 
-        b *= self.dx**2 * self.dy**2 / (2*(self.dx**2 + self.dy**2))
+        nit = 0 # Reset num iterations.
+        pcoef = 0.5 / (self.dx**2 + self.dy**2) # Simplifies code
+        b *= self.rho * self.dx**2 * self.dy**2 / (2*(self.dx**2 + self.dy**2))
 
         while err > tol and nit < maxiter:
             pn = p.copy()
@@ -195,7 +199,7 @@ class Fluid:
                             + (pn[2:, 1:-1] + pn[:-2, 1:-1])*self.dx**2) - b)
 
             # BCs. Openfield.
-            p[:, 0] = p[:, 1] # dp/dx=0 at x=0. 
+            p[:, 0] = p[:, 1] # dp/dx=0 at x=0.
             p[:, -1] = -p[:, -2] # p = 0 at x = L.
             p[0, :] = p[1, :]   # dp/dy = 0 at y = 0.
             p[-1, :] = p[-2, :] # dp/dx = 0 at y = 2.
@@ -208,9 +212,9 @@ class Fluid:
         return p
 
     def chorin_projection_step(self, u, v, p, dt):
-        """1) Advection-Diffusion. 
-            2) Solve Poisson. 
-            3) Correct velocities (add p term). 
+        """1) Advection-Diffusion.
+            2) Solve Poisson.
+            3) Correct velocities (add p term).
         """
         # update BC
         u, v = self.set_BCs(u, v)
@@ -221,7 +225,7 @@ class Fluid:
         # v = advect_v(v, u_avg, p, dx, dy, dt, nu, rho)
 
         # ...or the conservative-form d(u*u)dx
-        u = self.advect_u_alt_AI(u, v, dt,) # Include wind turbine. 
+        u = self.advect_u_alt_AI(u, v, dt,) # Include wind turbine.
         #u = self.advect_u_alt(u, v, dt,)
         v = self.advect_v_alt(v, u, dt)
 
@@ -245,20 +249,19 @@ class Fluid:
         dt_diff = Co * (1/self.dx**2 + 1/self.dy**2)**-1 / (2 * self.nu)
         #next_save_time = 0.2  # Store u array every 5 seconds.
         centerline_data = []  # To store centerline values over time.
-        u_point_story = [] # Initialize array of u values at a certain point at different moments.  
+        u_point_story = [] # Initialize array of u values at a certain point at different moments.
 
         while t < tf:
-            # Compute time step. 
-            # Advective Courant number. 
-            u_max = max(np.max(np.abs(u[1:-1, 1:-1])),
-                        np.max(np.abs(v[1:-1, 1:-1]))) + 1.0e-20
-            #dt_adv = self.cfl * self.dx / u_max
-            dt_adv = self.cfl * self.dx / 8  # Use a fiz u max to avoid small timesteps. 
-            dt = min(dt_adv, dt_diff) # Choose conservative.     
+            # Compute time step.
+            # Advective Courant number.
+            u_max = np.max(np.abs(u[1:-1, 1:-1])) + 1.0e-20
+            v_max = np.max(np.abs(v[1:-1, 1:-1])) + 1.0e-20
+            dt_adv = self.cfl / (u_max/self.dx + v_max/self.dy)
+            dt = min(dt_adv, dt_diff) # Choose conservative.
             u, v, p = self.chorin_projection_step(u, v, p, dt)
             # Extract horizontal centerline profiles.
-            # centerline_p = p[p.shape[0] // 2, :]  
-            # centerline_u = u[u.shape[0] // 2, :]  
+            # centerline_p = p[p.shape[0] // 2, :]
+            # centerline_u = u[u.shape[0] // 2, :]
 
             if n % 100 == 0:
                 print (f'Step: {n}, t = {t:0.3e}, dt = {dt:0.3e}')

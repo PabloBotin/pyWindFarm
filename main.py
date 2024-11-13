@@ -18,7 +18,7 @@ root = os.getcwd()
 mdir = f"{root}/figures/{today}/{run_id}"
 os.makedirs(mdir, exist_ok=True)
 this_file = os.path.basename(__file__)
-shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py 
+shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py
 script_dir = os.path.dirname(os.path.abspath(__file__))
 Fluid_source = os.path.join(script_dir, "Fluid.py")
 Fluid_destination = f"{mdir}/Fluid.py"
@@ -64,14 +64,14 @@ def main():
     duration = end_time - start_time
     print(f"Simulation took {duration:.2f} seconds to run.")
 
-    # Plot. 
+    # Plot.
     fig, ax = plt.subplots(figsize=(8, 6), dpi=300, constrained_layout=True)  # Disable layout engine
     Visualize.plot_u(sim.u, fig, ax)
     ax.set_title(f'U-velocity,tf={sim.tf},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
     fig.savefig(f'{mdir}/u.png')
     plt.close(fig)  # Close the figure to avoid displaying it
 
-    # # Plot centerline u 
+    # # Plot centerline u
     # fig, ax = plt.subplots(figsize=(7, 6), dpi=300)  # Create a single plot
     # Visualize.plot_u_centerline(centerline_u, fig, ax)
     # fig.suptitle(f'tf:{sim.tf}s, t_run:{duration:.2f}s,Re:{sim.Re}')
@@ -87,5 +87,5 @@ def main():
 
 
 
-if __name__ == "__main__": # Only run the functions defined in this code. 
+if __name__ == "__main__": # Only run the functions defined in this code.
     main()
