@@ -35,8 +35,11 @@ class Fluid:
         # A = 3.14 * 0.25 * D_turb**2 # Swept area.
         Ct = 0.75 # Thrust coefficient.
 
-        # Force per unit mass (N/kg) of Axial Induction
-        # Can go through derivation with Colin later...
+        # Need to add force per unit mass (N/kg) to the velocity transport equation (du/dt)
+        # F = - 0.5 * rho * Ct * A * u_in**2 in Newtons (N)
+        # Specific force per grid cell is Force / Volume of Action / fluid density
+        # 'specific F' = F / (A * dx) / rho
+        # 'specific F' = -0.5 * Ct * u_in**2 / dx
         self.F = -0.5 * Ct * self.u_in**2 / self.dx
 
         # Initialize arrays.
