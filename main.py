@@ -17,33 +17,18 @@ run_id = f"run{str(int(time.time()))[-5:]}" # 5 digits of current time in millis
 root = os.getcwd()
 mdir = f"{root}/figures/{today}/{run_id}"
 os.makedirs(mdir, exist_ok=True)
-# this_file = os.path.basename(__file__)
-# shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py 
-# script_dir = os.path.dirname(os.path.abspath(__file__))
-# Fluid_source = os.path.join(script_dir, "Fluid.py")
-# Fluid_destination = f"{mdir}/Fluid.py"
-# shutil.copy(Fluid_source, Fluid_destination) # Fluid.py
-# Visualize_source = os.path.join(script_dir, "Visualize.py")
-# Visualize_destination = f"{mdir}/Visualize.py"
-# shutil.copy(Visualize_source, Visualize_destination) # Visualize.py
-
-
-# # Create folder to save figures and scripts. 
-# today = time.strftime('%Y_%m_%d') # Get date.
-# run_id = f"run{str(int(time.time()))[-5:]}" # 5 digits of current time in milliseconds
-# root = os.getcwd() # Get current folder path. 
-# mdir = f"{root}/figures/{today}/{run_id}" # create folder
-# scripts = os.path.join(root, "python_files_backup.zip") # Create zip folder.
-# with zipfile.ZipFile(scripts, 'w') as zipf:
-#     for root, _, files in os.walk(root):
-#         for file in files:
-#             if file.endswith(".py"):  # Only add Python files
-#                 full_path = os.path.join(root, file)
-#                 # Ensure unique paths within the zip file by preserving directory structure
-#                 archive_name = os.path.relpath(full_path, root)
-#                 zipf.write(full_path, archive_name)
-# print(f"Created a folder for figures and compressed all Python files into a zip!")
-
+this_file = os.path.basename(__file__)
+shutil.copy(this_file, f"{mdir}/{os.path.basename(this_file)}") # main.py 
+script_dir = os.path.dirname(os.path.abspath(__file__))
+Fluid_source = os.path.join(script_dir, "Fluid.py")
+Fluid_destination = f"{mdir}/Fluid.py"
+shutil.copy(Fluid_source, Fluid_destination) # Fluid.py
+Visualize_source = os.path.join(script_dir, "Visualize.py")
+Visualize_destination = f"{mdir}/Visualize.py"
+shutil.copy(Visualize_source, Visualize_destination) # Visualize.py
+Visualize_source = os.path.join(script_dir, "Config.py")
+Visualize_destination = f"{mdir}/Config.py"
+shutil.copy(Visualize_source, Visualize_destination) # Visualize.py
 
 rcParams.update({
     ## Constrained Layout and tiny margins are necessary
@@ -70,32 +55,37 @@ def main():
     sim = Fluid() # Create instance of the class.
 
     # Run solver
-    u, v, p, u_point_story = sim.solve(sim.u, sim.v, sim.p)
+    # u, v, p, centerline_p, centerline_u = sim.solve(sim.u, sim.v, sim.p)
+    u, v, p = sim.solve(sim.u, sim.v, sim.p)
 
     # End the timer
     end_time = time.time()
     # Calculate the duration and print it
     duration = end_time - start_time
     print(f"Simulation took {duration:.2f} seconds to run.")
-    
-    fig, ax = plt.subplots(1, 3, figsize=(14, 4),
-                        sharey=True, sharex=True, dpi=300)
-    Visualize.plot_divergence(sim.u, sim.v, sim.dx, sim.dy, fig, ax[0])
-    Visualize.plot_pressure(sim.p, fig, ax[1])
-    Visualize.plot_u(sim.u, fig, ax[2])
 
-    #fig.suptitle(f'cells={sim.ny}x{sim.nx}, tol={sim.tol}, maxiter={sim.maxiter}, final time: {sim.tf}s, simulation time:{duration:.2f}')
-    fig.suptitle(f'tf={sim.tf},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},nu={sim.nu},F={sim.F},u_in={sim.u_in},maxiter={sim.maxiter}')
-    fig.savefig(f'{mdir}/triple_panel.png')
+    # Plot. 
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300, constrained_layout=True)  # Disable layout engine
+    Visualize.plot_u(sim.u, fig, ax)
+    ax.set_title(f'U-velocity,tf={sim.tf},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
+    fig.savefig(f'{mdir}/u.png')
     plt.close(fig)  # Close the figure to avoid displaying it
 
-    # Plot centerline u progression. 
-    fig, ax = plt.subplots(figsize=(7, 6), dpi=300)  # Create a single plot
-    #Visualize.plot_u_centerlines(centerline_data, fig, ax)
-    Visualize.plot_u_point_story(u_point_story, sim.tf, fig, ax)
-    fig.suptitle(f'tf={sim.tf},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},nu={sim.nu},F={sim.F},u_in={sim.u_in},maxiter={sim.maxiter}')
-    fig.savefig(f'{mdir}/u_point_story.png')
-    plt.close(fig)  # Close the figure to avoid displaying it
+    # # Plot centerline u 
+    # fig, ax = plt.subplots(figsize=(7, 6), dpi=300)  # Create a single plot
+    # Visualize.plot_u_centerline(centerline_u, fig, ax)
+    # fig.suptitle(f'tf:{sim.tf}s, t_run:{duration:.2f}s,Re:{sim.Re}')
+    # fig.savefig(f'{mdir}/centerline_u.png')
+    # plt.close(fig)  # Close the figure to avoid displaying it
+
+    # # Plot centerline.
+    # fig, ax = plt.subplots(figsize=(7, 6), dpi=300)  # Create a single plot
+    # Visualize.plot_p_centerline(centerline_p, fig, ax)
+    # fig.suptitle(f'tf:{sim.tf}s, t_run:{duration:.2f}s,Re:{sim.Re}')
+    # fig.savefig(f'{mdir}/centerline_p.png')
+    # plt.close(fig)  # Close the figure to avoid displaying it
+
+
 
 if __name__ == "__main__": # Only run the functions defined in this code. 
     main()

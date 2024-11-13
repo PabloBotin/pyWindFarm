@@ -1,42 +1,50 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
-from Config import L, ny, tol, maxiter, H, tf, u_in, nu, F
+from Config import L, ny, tol, maxiter, H, tf, u_in, Re
 
 class Fluid:
 
     def __init__(self, config_file='Config.py'):
 
-        # Define parameters.
+        # Domain
         self.H = H
         self.L = L  # Physical length of the domain.
+        # Mesh
         self.ny = ny # Ensure cells are square
         self.nx = self.L*ny
-        self.rho = 1.0 # Density.
-        self.nu = nu # Kinematic viscosity.
+        self.dy = H/self.ny
+        self.dx = H*L/self.nx # They have to be equal. 
+        if self.dx != self.dy:
+            raise SystemExit("Error: Cells are not square. Simulation terminated.")
+        # Physical properties
+        self.rho = .001 # Density. air_rho= .001
+        self.Re = Re # Kinematic viscosity.
+        self.u_in = u_in
+        self.nu = (self.u_in * self.H) / self.Re
         self.tf = tf # final simulation time
+        print (f'Running simulation with nu={self.nu}, Re={self.Re} and inlet vel={self.u_in}')
+        # Numerical 
         self.cfl = 0.1 # CFL number
         self.tol = tol  # Poisson solver tolerance threshold value.
         self.maxiter = maxiter # Max number of iterations on the Poisson solver.
-        self.u_in = u_in
-        self.F = F
-
+        # Turbine parameters 
+        self.D_cells = 6  # Cells span by the turbine's diamater.  
+        self.D = self.H/self.ny*self.D_cells  # Physical length of the diameter. 
+        self.A= 3.14*(self.D/2)*(self.D/2) # Swept area.
+        self.Ct= 3/4 # Thrust coefficient. 
+        self.F = -0.5 * self.rho * self.A * self.Ct * self.u_in * self.u_in / (self.D_cells)
+        # self.F = 60 
         # Initialize arrays. 
-        self.u = np.zeros((self.ny+2, self.nx+1))  # First, fill the entire array with zeros 
+        self.u = np.ones((self.ny+2, self.nx+1))*self.u_in  # Set initial velocity to u_in everywhere.  
         self.v = np.zeros((self.ny+1, self.nx+2))  # First, fill the entire array with zeros
         self.p = np.zeros((self.ny+2, self.nx+2)) + 1e-20 # Pressure field. Zero initialization creates trouble. 
 
         # Add a turbine.
         self.AI = np.zeros_like(self.u) # Init force array. 
         mid_y, mid_x = self.ny // 2, self.nx // 2 # In the middle of the domain. 
-        num_cells = 3  # Number of cells in y-direction (total 6 cells: 3 before and 3 after the midpoint)
         # Assign force to corresponding cells. 
-        self.AI[(mid_y - num_cells):(mid_y + num_cells),mid_x] = self.F
-
-        # Define cell lengths/steps. 
-        #self.dx = 2 / (self.nx - 1) # Why this? 
-        self.dy = H / self.ny
-        self.dx = self.dy 
+        self.AI[(mid_y - self.D_cells//2):(mid_y + self.D_cells//2),mid_x] = self.F
 
     def interpolate(self, u, v):
         u_avg = (u[:-1, :-1] + u[1:, :-1] + u[1:, 1:] + u[:-1, 1:])/4
@@ -244,25 +252,19 @@ class Fluid:
             # Advective Courant number. 
             u_max = max(np.max(np.abs(u[1:-1, 1:-1])),
                         np.max(np.abs(v[1:-1, 1:-1]))) + 1.0e-20
-            dt_adv = self.cfl * self.dx / u_max
+            #dt_adv = self.cfl * self.dx / u_max
+            dt_adv = self.cfl * self.dx / 8  # Use a fiz u max to avoid small timesteps. 
             dt = min(dt_adv, dt_diff) # Choose conservative.     
             u, v, p = self.chorin_projection_step(u, v, p, dt)
-            # Get the value at mid-height and 5/8 width of the u array
-            mid_height = u.shape[0] // 2
-            five_eighths_width = 5 * u.shape[1] // 8
-            u_point = u[mid_height, five_eighths_width]
-            u_point_story.append(u_point)
+            # Extract horizontal centerline profiles.
+            # centerline_p = p[p.shape[0] // 2, :]  
+            # centerline_u = u[u.shape[0] // 2, :]  
 
-            # Save the u centerline every 5 seconds
-            #if t >= next_save_time:
-                #centerline = u[u.shape[0] // 2, :]  # Extract horizontal centerline
-                #centerline_data.append((t, centerline))  # Save time and centerline data
-                #next_save_time += 5.0  # Set the next save time
-        
             if n % 100 == 0:
                 print (f'Step: {n}, t = {t:0.3e}, dt = {dt:0.3e}')
 
             t += dt
             n += 1
 
-        return u, v, p, u_point_story
+        return u, v, p
+        #return u, v, p, centerline_p, centerline_u
