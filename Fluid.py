@@ -49,9 +49,9 @@ class Fluid:
 
         # Add a turbine.
         self.AI = np.zeros_like(self.u) # Init force array.
-        mid_y, mid_x = self.ny // 2, self.nx // 2 # In the middle of the domain.
+        y_turb, x_turb = self.ny // 2, self.nx // 4 # In the middle of the domain.
         # Assign force to corresponding cells.
-        self.AI[(mid_y - ny_turb//2):(mid_y + ny_turb//2),mid_x] = self.F
+        self.AI[(y_turb - ny_turb//2):(y_turb + ny_turb//2),x_turb] = self.F
 
     def interpolate(self, u, v):
         u_avg = (u[:-1, :-1] + u[1:, :-1] + u[1:, 1:] + u[:-1, 1:])/4
@@ -212,6 +212,40 @@ class Fluid:
 
         #print(f'p iters: {nit}')
 
+        return p
+
+    def pressure_poisson_gauss_seidel(self, p, b):
+        """Solve the Poisson equation using Gauss-Seidel's method."""
+        err = np.inf  # Initialize a large error.
+        nit = 0  # Reset the number of iterations.
+        pcoef = 0.5 / (self.dx**2 + self.dy**2)  # Precompute coefficient for simplicity.
+        b *= self.rho * self.dx**2 * self.dy**2 / (2 * (self.dx**2 + self.dy**2))
+
+        while err > tol and nit < maxiter:
+            pn = p.copy()  # Save the current state to compute the error.
+            
+            # Gauss-Seidel in-place update
+            for i in range(1, p.shape[0] - 1):
+                for j in range(1, p.shape[1] - 1):
+                    p[i, j] = (
+                        pcoef * (
+                            (p[i, j + 1] + p[i, j - 1]) * self.dy**2 +
+                            (p[i + 1, j] + p[i - 1, j]) * self.dx**2
+                        ) - b[i, j]
+                    )
+
+            # Apply boundary conditions
+            p[:, 0] = p[:, 1]    # dp/dx = 0 at x = 0
+            p[:, -1] = -p[:, -2] # p = 0 at x = L
+            p[0, :] = p[1, :]    # dp/dy = 0 at y = 0
+            p[-1, :] = p[-2, :]  # dp/dy = 0 at y = 2
+
+            # Calculate error based on the new values
+            err = np.mean((p[1:-1, 1:-1] - pn[1:-1, 1:-1])**2)**0.5
+            nit += 1
+
+        #print(f'p iters: {nit}')
+        
         return p
 
     def chorin_projection_step(self, u, v, p, dt):

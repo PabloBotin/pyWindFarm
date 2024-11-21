@@ -24,7 +24,8 @@ class Visualize:
 
         # Plot divergence for interior points
         cp = ax.imshow(divergence[:, :-1], cmap='seismic', origin='lower', aspect='equal')
-        fig.colorbar(cp, ax=ax).set_label('Divergence')
+        #fig.colorbar(cp, ax=ax).set_label('Divergence')
+        cbar = fig.colorbar(cp,orientation='horizontal')
         ax.set_title('2D Divergence Field (Interior Points)')
 
     def plot_pressure(pressure, fig, ax):
@@ -33,7 +34,8 @@ class Visualize:
         """
         cp = ax.imshow(pressure[1:-1, 1:-1], cmap='plasma', origin='lower',
                     aspect='equal')
-        fig.colorbar(cp, ax=ax).set_label('Pressure')
+        #fig.colorbar(cp, ax=ax).set_label('Pressure')
+        cbar = fig.colorbar(cp,orientation='horizontal')
         ax.set_title('2D Pressure Field')
 
     def plot_u(u, fig, ax):

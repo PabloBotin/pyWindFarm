@@ -64,11 +64,25 @@ def main():
     duration = end_time - start_time
     print(f"Simulation took {duration:.2f} seconds to run.")
 
-    # Plot.
+    # Plot u-velocity. 
     fig, ax = plt.subplots(figsize=(8, 6), dpi=300, constrained_layout=True)  # Disable layout engine
     Visualize.plot_u(sim.u, fig, ax)
-    ax.set_title(f'U-velocity,tf={sim.tf},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
+    ax.set_title(f'tf={sim.tf:.2f},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
     fig.savefig(f'{mdir}/u.png')
+    plt.close(fig)  # Close the figure to avoid displaying it
+
+    # Plot pressure. 
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300, constrained_layout=True)  # Disable layout engine
+    Visualize.plot_pressure(sim.p, fig, ax)
+    ax.set_title(f'tf={sim.tf:.2f},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
+    fig.savefig(f'{mdir}/p.png')
+    plt.close(fig)  # Close the figure to avoid displaying it
+
+    # Plot divergence. 
+    fig, ax = plt.subplots(figsize=(8, 6), dpi=300, constrained_layout=True)  # Disable layout engine
+    Visualize.plot_divergence(sim.u, sim.v, sim.dx, sim.dy, fig, ax)
+    ax.set_title(f'tf={sim.tf:.2f},t_run={duration:.2f}s,{sim.ny}x{sim.nx},tol={sim.tol},Re={sim.Re},maxiter={sim.maxiter}',fontsize=12, fontweight='bold')
+    fig.savefig(f'{mdir}/div.png')
     plt.close(fig)  # Close the figure to avoid displaying it
 
     # # Plot centerline u
@@ -84,8 +98,6 @@ def main():
     # fig.suptitle(f'tf:{sim.tf}s, t_run:{duration:.2f}s,Re:{sim.Re}')
     # fig.savefig(f'{mdir}/centerline_p.png')
     # plt.close(fig)  # Close the figure to avoid displaying it
-
-
 
 if __name__ == "__main__": # Only run the functions defined in this code.
     main()
