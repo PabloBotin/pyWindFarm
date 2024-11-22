@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 from Config import L, ny, tol, maxiter, H, tf, u_in, rho, Re
+from gauss_seidel import gauss_seidel_iteration
 
 class Fluid:
 
@@ -222,17 +223,10 @@ class Fluid:
         b *= self.rho * self.dx**2 * self.dy**2 / (2 * (self.dx**2 + self.dy**2))
 
         while err > tol and nit < maxiter:
-            pn = p.copy()  # Save the current state to compute the error.
-            
+            pn = p.copy()
+
             # Gauss-Seidel in-place update
-            for i in range(1, p.shape[0] - 1):
-                for j in range(1, p.shape[1] - 1):
-                    p[i, j] = (
-                        pcoef * (
-                            (p[i, j + 1] + p[i, j - 1]) * self.dy**2 +
-                            (p[i + 1, j] + p[i - 1, j]) * self.dx**2
-                        ) - b[i, j]
-                    )
+            p = gauss_seidel_iteration(p, b, pcoef, self.dx, self.dy)
 
             # Apply boundary conditions
             p[:, 0] = p[:, 1]    # dp/dx = 0 at x = 0
@@ -244,8 +238,8 @@ class Fluid:
             err = np.mean((p[1:-1, 1:-1] - pn[1:-1, 1:-1])**2)**0.5
             nit += 1
 
-        #print(f'p iters: {nit}')
-        
+        # print(f'p iters: {nit}')
+
         return p
 
     def chorin_projection_step(self, u, v, p, dt):
@@ -271,7 +265,7 @@ class Fluid:
 
         # then compute b and p with correct u/v BCs
         b = self.split_chorin_b(u, v, dt) # Calculate b term.
-        p = self.pressure_poisson(p, b) # Solve Poisson eq.
+        p = self.pressure_poisson_gauss_seidel(p, b) # Solve Poisson eq.
 
         # then correct the velocity with pressure
         u = self.correct_u(u, p, dt)

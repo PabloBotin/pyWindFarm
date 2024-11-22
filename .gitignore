@@ -1,3 +1,6 @@
 figures/
 __pycache__/
 **/.DS_Store
+*.so
+*.c
+build/
